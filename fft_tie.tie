@@ -1,0 +1,581 @@
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 														Hardware Share														  	//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Hardware share, reduce the chip area consumption, but need a single clock clock for execution
+
+ function [31:0] ComplexMul_Real ([15:0] realA, [15:0] imagA, [15:0] realB, [15:0] imagB) shared
+ { 
+ 	wire do_signed = 1'b1; 
+ 	assign ComplexMul_Real = TIEmul(realA, realB, do_signed) - TIEmul(imagA, imagB, do_signed);
+ }
+ 
+ function [31:0] ComplexMul_Imag ([15:0] realA, [15:0] imagA, [15:0] realB, [15:0] imagB) shared
+ {  
+ 	wire do_signed = 1'b1; 
+ 	assign ComplexMul_Imag = TIEmul(realA, imagB, do_signed) + TIEmul(imagA, realB, do_signed);
+ }
+ 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 												Twiddl Factors Table														  	//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+table  Sinewave 32 1024 
+{      0,    201,    402,    603,    804,   1005,   1206,   1406,
+   1607,   1808,   2009,   2209,   2410,   2610,   2811,   3011,
+   3211,   3411,   3611,   3811,   4011,   4210,   4409,   4608,
+   4807,   5006,   5205,   5403,   5601,   5799,   5997,   6195,
+   6392,   6589,   6786,   6982,   7179,   7375,   7571,   7766,
+   7961,   8156,   8351,   8545,   8739,   8932,   9126,   9319,
+   9511,   9703,   9895,  10087,  10278,  10469,  10659,  10849,
+  11038,  11227,  11416,  11604,  11792,  11980,  12166,  12353,
+  12539,  12724,  12909,  13094,  13278,  13462,  13645,  13827,
+  14009,  14191,  14372,  14552,  14732,  14911,  15090,  15268,
+  15446,  15623,  15799,  15975,  16150,  16325,  16499,  16672,
+  16845,  17017,  17189,  17360,  17530,  17699,  17868,  18036,
+  18204,  18371,  18537,  18702,  18867,  19031,  19194,  19357,
+  19519,  19680,  19840,  20000,  20159,  20317,  20474,  20631,
+  20787,  20942,  21096,  21249,  21402,  21554,  21705,  21855,
+  22004,  22153,  22301,  22448,  22594,  22739,  22883,  23027,
+  23169,  23311,  23452,  23592,  23731,  23869,  24006,  24143,
+  24278,  24413,  24546,  24679,  24811,  24942,  25072,  25201,
+  25329,  25456,  25582,  25707,  25831,  25954,  26077,  26198,
+  26318,  26437,  26556,  26673,  26789,  26905,  27019,  27132,
+  27244,  27355,  27466,  27575,  27683,  27790,  27896,  28001,
+  28105,  28208,  28309,  28410,  28510,  28608,  28706,  28802,
+  28897,  28992,  29085,  29177,  29268,  29358,  29446,  29534,
+  29621,  29706,  29790,  29873,  29955,  30036,  30116,  30195,
+  30272,  30349,  30424,  30498,  30571,  30643,  30713,  30783,
+  30851,  30918,  30984,  31049,
+  31113,  31175,  31236,  31297,
+  31356,  31413,  31470,  31525,  31580,  31633,  31684,  31735,
+  31785,  31833,  31880,  31926,  31970,  32014,  32056,  32097,
+  32137,  32176,  32213,  32249,  32284,  32318,  32350,  32382,
+  32412,  32441,  32468,  32495,  32520,  32544,  32567,  32588,
+  32609,  32628,  32646,  32662,  32678,  32692,  32705,  32717,
+  32727,  32736,  32744,  32751,  32757,  32761,  32764,  32766,
+  32767,  32766,  32764,  32761,  32757,  32751,  32744,  32736,
+  32727,  32717,  32705,  32692,  32678,  32662,  32646,  32628,
+  32609,  32588,  32567,  32544,  32520,  32495,  32468,  32441,
+  32412,  32382,  32350,  32318,  32284,  32249,  32213,  32176,
+  32137,  32097,  32056,  32014,  31970,  31926,  31880,  31833,
+  31785,  31735,  31684,  31633,  31580,  31525,  31470,  31413,
+  31356,  31297,  31236,  31175,  31113,  31049,  30984,  30918,
+  30851,  30783,  30713,  30643,  30571,  30498,  30424,  30349,
+  30272,  30195,  30116,  30036,  29955,  29873,  29790,  29706,
+  29621,  29534,  29446,  29358,  29268,  29177,  29085,  28992,
+  28897,  28802,  28706,  28608,  28510,  28410,  28309,  28208,
+  28105,  28001,  27896,  27790,  27683,  27575,  27466,  27355,
+  27244,  27132,  27019,  26905,  26789,  26673,  26556,  26437,
+  26318,  26198,  26077,  25954,  25831,  25707,  25582,  25456,
+  25329,  25201,  25072,  24942,  24811,  24679,  24546,  24413,
+  24278,  24143,  24006,  23869,  23731,  23592,  23452,  23311,
+  23169,  23027,  22883,  22739,  22594,  22448,  22301,  22153,
+  22004,  21855,  21705,  21554,  21402,  21249,  21096,  20942,
+  20787,  20631,  20474,  20317,  20159,  20000,  19840,  19680,
+  19519,  19357,  19194,  19031,  18867,  18702,  18537,  18371,
+  18204,  18036,  17868,  17699,  17530,  17360,  17189,  17017,
+  16845,  16672,  16499,  16325,  16150,  15975,  15799,  15623,
+  15446,  15268,  15090,  14911,  14732,  14552,  14372,  14191,
+  14009,  13827,  13645,  13462,  13278,  13094,  12909,  12724,
+  12539,  12353,  12166,  11980,  11792,  11604,  11416,  11227,
+  11038,  10849,  10659,  10469,  10278,  10087,   9895,   9703,
+   9511,   9319,   9126,   8932,   8739,   8545,   8351,   8156,
+   7961,   7766,   7571,   7375,   7179,   6982,   6786,   6589,
+   6392,   6195,   5997,   5799,   5601,   5403,   5205,   5006,
+   4807,   4608,   4409,   4210,   4011,   3811,   3611,   3411,
+   3211,   3011,   2811,   2610,   2410,   2209,   2009,   1808,
+   1607,   1406,   1206,   1005,    804,    603,    402,    201,
+      0,   -201,   -402,   -603,   -804,  -1005,  -1206,  -1406,
+  -1607,  -1808,  -2009,  -2209,  -2410,  -2610,  -2811,  -3011,
+  -3211,  -3411,  -3611,  -3811,  -4011,  -4210,  -4409,  -4608,
+  -4807,  -5006,  -5205,  -5403,  -5601,  -5799,  -5997,  -6195,
+  -6392,  -6589,  -6786,  -6982,  -7179,  -7375,  -7571,  -7766,
+  -7961,  -8156,  -8351,  -8545,  -8739,  -8932,  -9126,  -9319,
+  -9511,  -9703,  -9895, -10087, -10278, -10469, -10659, -10849,
+ -11038, -11227, -11416, -11604, -11792, -11980, -12166, -12353,
+ -12539, -12724, -12909, -13094, -13278, -13462, -13645, -13827,
+ -14009, -14191, -14372, -14552, -14732, -14911, -15090, -15268,
+ -15446, -15623, -15799, -15975, -16150, -16325, -16499, -16672,
+ -16845, -17017, -17189, -17360, -17530, -17699, -17868, -18036,
+ -18204, -18371, -18537, -18702, -18867, -19031, -19194, -19357,
+ -19519, -19680, -19840, -20000, -20159, -20317, -20474, -20631,
+ -20787, -20942, -21096, -21249, -21402, -21554, -21705, -21855,
+ -22004, -22153, -22301, -22448, -22594, -22739, -22883, -23027,
+ -23169, -23311, -23452, -23592, -23731, -23869, -24006, -24143,
+ -24278, -24413, -24546, -24679, -24811, -24942, -25072, -25201,
+ -25329, -25456, -25582, -25707, -25831, -25954, -26077, -26198,
+ -26318, -26437, -26556, -26673, -26789, -26905, -27019, -27132,
+ -27244, -27355, -27466, -27575, -27683, -27790, -27896, -28001,
+ -28105, -28208, -28309, -28410, -28510, -28608, -28706, -28802,
+ -28897, -28992, -29085, -29177, -29268, -29358, -29446, -29534,
+ -29621, -29706, -29790, -29873, -29955, -30036, -30116, -30195,
+ -30272, -30349, -30424, -30498, -30571, -30643, -30713, -30783,
+ -30851, -30918, -30984, -31049, -31113, -31175, -31236, -31297,
+ -31356, -31413, -31470, -31525, -31580, -31633, -31684, -31735,
+ -31785, -31833, -31880, -31926, -31970, -32014, -32056, -32097,
+ -32137, -32176, -32213, -32249, -32284, -32318, -32350, -32382,
+ -32412, -32441, -32468, -32495, -32520, -32544, -32567, -32588,
+ -32609, -32628, -32646, -32662, -32678, -32692, -32705, -32717,
+ -32727, -32736, -32744, -32751, -32757, -32761, -32764, -32766,
+ -32767, -32766, -32764, -32761, -32757, -32751, -32744, -32736,
+ -32727, -32717, -32705, -32692, -32678, -32662, -32646, -32628,
+ -32609, -32588, -32567, -32544, -32520, -32495, -32468, -32441,
+ -32412, -32382, -32350, -32318, -32284, -32249, -32213, -32176,
+ -32137, -32097, -32056, -32014, -31970, -31926, -31880, -31833,
+ -31785, -31735, -31684, -31633, -31580, -31525, -31470, -31413,
+ -31356, -31297, -31236, -31175, -31113, -31049, -30984, -30918,
+ -30851, -30783, -30713, -30643, -30571, -30498, -30424, -30349,
+ -30272, -30195, -30116, -30036, -29955, -29873, -29790, -29706,
+ -29621, -29534, -29446, -29358, -29268, -29177, -29085, -28992,
+ -28897, -28802, -28706, -28608, -28510, -28410, -28309, -28208,
+ -28105, -28001, -27896, -27790, -27683, -27575, -27466, -27355,
+ -27244, -27132, -27019, -26905, -26789, -26673, -26556, -26437,
+ -26318, -26198, -26077, -25954, -25831, -25707, -25582, -25456,
+ -25329, -25201, -25072, -24942, -24811, -24679, -24546, -24413,
+ -24278, -24143, -24006, -23869, -23731, -23592, -23452, -23311,
+ -23169, -23027, -22883, -22739, -22594, -22448, -22301, -22153,
+ -22004, -21855, -21705, -21554, -21402, -21249, -21096, -20942,
+ -20787, -20631, -20474, -20317, -20159, -20000, -19840, -19680,
+ -19519, -19357, -19194, -19031, -18867, -18702, -18537, -18371,
+ -18204, -18036, -17868, -17699, -17530, -17360, -17189, -17017,
+ -16845, -16672, -16499, -16325, -16150, -15975, -15799, -15623,
+ -15446, -15268, -15090, -14911, -14732, -14552, -14372, -14191,
+ -14009, -13827, -13645, -13462, -13278, -13094, -12909, -12724,
+ -12539, -12353, -12166, -11980, -11792, -11604, -11416, -11227,
+ -11038, -10849, -10659, -10469, -10278, -10087,  -9895,  -9703,
+  -9511,  -9319,  -9126,  -8932,  -8739,  -8545,  -8351,  -8156,
+  -7961,  -7766,  -7571,  -7375,  -7179,  -6982,  -6786,  -6589,
+  -6392,  -6195,  -5997,  -5799,  -5601,  -5403,  -5205,  -5006,
+  -4807,  -4608,  -4409,  -4210,  -4011,  -3811,  -3611,  -3411,
+  -3211,  -3011,  -2811,  -2610,  -2410,  -2209,  -2009,  -1808,
+  -1607,  -1406,  -1206,  -1005,   -804,   -603,   -402,   -201}
+ */
+ 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 													MAC_One_Butterfly														  	//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ regfile fft_16 16 8 fft_16
+ 
+ //=================
+ //DIT_one_Butterfly
+ //=================
+ 
+ //Without Table for twiddle factors
+ operation DIT_one_BUTTERFLY {inout fft_16 Sample0Real, inout fft_16 Sample0Imag, inout fft_16 Sample1Real,
+						  inout fft_16 Sample1Imag, in AR WReal, in AR WImag}{}
+ {
+ 	wire [31:0] temp0_real = Sample0Real << 15;
+	wire [31:0] temp0_imag = Sample0Imag << 15; 
+ 	
+ 	wire [31:0] WSample1Real = ComplexMul_Real(Sample1Real, Sample1Imag, WReal[15:0], WImag[15:0]);
+ 	wire [31:0] WSample1Imag = ComplexMul_Imag(Sample1Real, Sample1Imag, WReal[15:0], WImag[15:0]);
+ 	
+ 	assign Sample0Real = (temp0_real + WSample1Real) >> 15;
+ 	assign Sample0Imag = (temp0_imag + WSample1Imag) >> 15;
+ 	assign Sample1Real = (temp0_real - WSample1Real) >> 15;
+ 	assign Sample1Imag = (temp0_imag - WSample1Imag) >> 15;
+ }
+ 
+ schedule DIT_one_Butterfly {DIT_one_BUTTERFLY}
+ {
+ 	use Sample0Real 1;
+ 	use Sample0Imag 1;
+ 	use Sample1Real 1;
+ 	use Sample1Imag 1;
+ 	use WReal 1;
+ 	use WImag 1;
+ 	def temp0_real 1;
+ 	def temp0_imag 1;
+ 	def WSample1Real 1;
+ 	def WSample1Imag 1;
+ 	def Sample0Real 2;
+ 	def Sample0Imag 2;
+ 	def Sample1Real 2;
+ 	def Sample1Imag 2;
+ }
+ 
+ 
+  //With Table for twiddle factors
+  /*
+  operation DIT_one_BUTTERFLY {inout fft_16 Sample0Real, inout fft_16 Sample0Imag, inout fft_16 Sample1Real,
+						  inout fft_16 Sample1Imag, in AR real_angel, in AR imag_angel}{}
+ {
+ 	wire [31:0] temp0_real = Sample0Real << 15;
+	wire [31:0] temp0_imag = Sample0Imag << 15; 
+	
+ 	wire [31:0] WSample1Real = ComplexMul_Real(Sample1Real, Sample1Imag, Sinewave[real_angel], Sinewave[imag_angel]*(-1));
+ 	wire [31:0] WSample1Imag = ComplexMul_Imag(Sample1Real, Sample1Imag, Sinewave[real_angel], Sinewave[imag_angel]*(-1));
+ 	
+ 	assign Sample0Real = (temp0_real + WSample1Real) >> 15;
+ 	assign Sample0Imag = (temp0_imag + WSample1Imag) >> 15;
+ 	assign Sample1Real = (temp0_real - WSample1Real) >> 15;
+ 	assign Sample1Imag = (temp0_imag - WSample1Imag) >> 15;
+ 	
+ }
+ 
+ schedule DIT_one_Butterfly {DIT_one_BUTTERFLY}
+ {
+ 	use Sample0Real 1;
+ 	use Sample0Imag 1;
+ 	use Sample1Real 1;
+ 	use Sample1Imag 1;
+ 	use real_angel 1;
+ 	use imag_angel 1;
+ 	def temp0_real 1;
+ 	def temp0_imag 1;
+ 	def WSample1Real 1;
+ 	def WSample1Imag 1;
+ 	def Sample0Real 2;
+ 	def Sample0Imag 2;
+ 	def Sample1Real 2;
+ 	def Sample1Imag 2;
+ }
+*/
+
+ //=================
+ //DIF_one_Butterfly
+ //=================
+
+ //Withou Table for twiddle factors
+ operation DIF_one_BUTTERFLY {inout fft_16 Sample0Real, inout fft_16 Sample0Imag, inout fft_16 Sample1Real,
+						  inout fft_16 Sample1Imag, in AR WReal, in AR WImag}{}
+ {
+ 	wire [15:0] temp0_real = Sample0Real + Sample1Real;
+	wire [15:0] temp0_imag = Sample0Imag + Sample1Imag;
+	wire [15:0] temp1_real = Sample0Real - Sample1Real;
+	wire [15:0] temp1_imag = Sample0Imag - Sample1Imag;
+	
+	assign Sample0Real = temp0_real;
+	assign Sample0Imag = temp0_imag;
+ 	assign Sample1Real = (ComplexMul_Real(temp1_real, temp1_imag, WReal[15:0], WImag[15:0])) >> 15;
+ 	assign Sample1Imag = (ComplexMul_Imag(temp1_real, temp1_imag, WReal[15:0], WImag[15:0])) >> 15;
+ }
+ 
+ schedule DIF_one_Butterfly {DIF_one_BUTTERFLY}
+ {
+ 	use Sample0Real 1;
+ 	use Sample0Imag 1;
+ 	use Sample1Real 1;
+ 	use Sample1Imag 1;
+ 	use WReal 1;
+ 	use WImag 1;
+ 	def temp0_real 1;
+ 	def temp0_imag 1;
+ 	def temp1_real 1;
+ 	def temp1_imag 1;
+ 	def Sample0Real 2;
+ 	def Sample0Imag 2;
+ 	def Sample1Real 2;
+ 	def Sample1Imag 2;
+ }
+ 
+ 
+ //With Table for twiddle factor
+  /*
+  operation DIF_one_BUTTERFLY {inout fft_16 Sample0Real, inout fft_16 Sample0Imag, inout fft_16 Sample1Real,
+						  inout fft_16 Sample1Imag, in AR real_angel, in AR imag_angel}{}
+ {
+ 	wire [15:0] temp0_real = Sample0Real + Sample1Real;
+	wire [15:0] temp0_imag = Sample0Imag + Sample1Imag;
+	wire [15:0] temp1_real = Sample0Real - Sample1Real;
+	wire [15:0] temp1_imag = Sample0Imag - Sample1Imag;
+	
+	assign Sample0Real = temp0_real;
+	assign Sample0Imag = temp0_imag;
+ 	assign Sample1Real = (ComplexMul_Real(temp1_real, temp1_imag, Sinewave[real_angel], Sinewave[imag_angel]*(-1))) >> 15;
+ 	assign Sample1Imag = (ComplexMul_Imag(temp1_real, temp1_imag, Sinewave[real_angel], Sinewave[imag_angel]*(-1))) >> 15;
+ }
+ 
+  schedule DIF_one_Butterfly {DIF_one_BUTTERFLY}
+ {
+ 	use Sample0Real 1;
+ 	use Sample0Imag 1;
+ 	use Sample1Real 1;
+ 	use Sample1Imag 1;
+ 	use real_angel 1;
+ 	use imag_angel 1;
+ 	def temp0_real 1;
+ 	def temp0_imag 1;
+ 	def temp1_real 1;
+ 	def temp1_imag 1;
+ 	def Sample0Real 2;
+ 	def Sample0Imag 2;
+ 	def Sample1Real 2;
+ 	def Sample1Imag 2;
+ }
+ */
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 												SIMD_Four_Butterflies														  	//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ regfile fft_128 128 4 fft128
+ regfile fft_64 64 4 fft_64
+ 
+ //Dual Load/Store
+ format flix64 64 {slot_0, slot_1}
+ slot_opcodes slot_0 {st.fft_128, st.fft_64, ld.fft_128, ld.fft_64}
+ slot_opcodes slot_1 {st.fft_128, st.fft_64, ld.fft_128, ld.fft_64}
+ 
+ 
+ //==================
+ //DIT_four_Butterfly
+ //==================
+ operation DIT_four_BUTTERFLY{inout fft_128 SampleReal, inout fft_128 SampleImag, in fft_64 WReal, in fft_64 WImag}{}
+ {
+ 	wire [15:0] sample0_real, sample1_real, sample2_real, sample3_real, sample4_real, sample5_real, sample6_real, sample7_real;
+ 	wire [15:0] sample0_imag, sample1_imag, sample2_imag, sample3_imag, sample4_imag, sample5_imag, sample6_imag, sample7_imag;
+ 
+ 	wire [31:0] temp0_real = SampleReal[15:0] << 15;
+ 	wire [31:0] temp2_real = SampleReal[47:32] << 15;
+ 	wire [31:0] temp4_real = SampleReal[79:64] << 15;
+ 	wire [31:0] temp6_real = SampleReal[111:96] << 15;
+ 	wire [31:0] temp0_imag = SampleImag[15:0] << 15;
+ 	wire [31:0] temp2_imag = SampleImag[47:32] << 15;
+ 	wire [31:0] temp4_imag = SampleImag[79:64] << 15;
+ 	wire [31:0] temp6_imag = SampleImag[111:96] << 15;
+ 
+ 	//With hardware share
+ 	wire [31:0] temp1_real = ComplexMul_Real(SampleReal[31:16], SampleImag[31:16], WReal[15:0], WImag[15:0]);
+ 	wire [31:0] temp3_real = ComplexMul_Real(SampleReal[63:48], SampleImag[63:48], WReal[31:16], WImag[31:16]);
+ 	wire [31:0] temp5_real = ComplexMul_Real(SampleReal[95:80], SampleImag[95:80], WReal[47:32], WImag[47:32]);
+ 	wire [31:0] temp7_real = ComplexMul_Real(SampleReal[127:112], SampleImag[127:112], WReal[63:48], WImag[63:48]);
+ 	wire [31:0] temp1_imag = ComplexMul_Imag(SampleReal[31:16], SampleImag[31:16], WReal[15:0], WImag[15:0]);
+ 	wire [31:0] temp3_imag = ComplexMul_Imag(SampleReal[63:48], SampleImag[63:48], WReal[31:16], WImag[31:16]);
+ 	wire [31:0] temp5_imag = ComplexMul_Imag(SampleReal[95:80], SampleImag[95:80], WReal[47:32], WImag[47:32]);
+ 	wire [31:0] temp7_imag = ComplexMul_Imag(SampleReal[127:112], SampleImag[127:112], WReal[63:48], WImag[63:48]);
+ 
+ 
+ //	Without hardwareshare code
+ //	wire [31:0] temp1_real = TIEmul(SampleReal[31:16], WReal[15:0], 1'b1) - TIEmul(SampleImag[31:16], WImag[15:0], 1'b1);
+ //	wire [31:0] temp3_real = TIEmul(SampleReal[63:48], WReal[31:16], 1'b1) - TIEmul(SampleImag[63:48], WImag[31:16], 1'b1);
+ //	wire [31:0] temp5_real = TIEmul(SampleReal[95:80], WReal[47:32], 1'b1) - TIEmul(SampleImag[31:16], WImag[47:32], 1'b1);
+ //	wire [31:0] temp7_real = TIEmul(SampleReal[127:112], WReal[63:48], 1'b1) - TIEmul(SampleImag[127:112], WImag[63:48], 1'b1);
+ //	wire [31:0] temp1_imag = TIEmul(SampleReal[31:16], WImag[15:0], 1'b1) + TIEmul(SampleImag[31:16], WReal[15:0], 1'b1);
+ //	wire [31:0] temp3_imag = TIEmul(SampleReal[63:48], WImag[31:16], 1'b1) + TIEmul(SampleImag[63:48], WReal[31:16], 1'b1);
+ //	wire [31:0] temp5_imag = TIEmul(SampleReal[95:80], WImag[47:32], 1'b1)+ TIEmul(SampleImag[31:16], WReal[47:32], 1'b1);
+ //	wire [31:0] temp7_imag = TIEmul(SampleReal[127:112], WImag[63:48], 1'b1) + TIEmul(SampleImag[127:112], WReal[63:48], 1'b1);
+ 
+ 	assign sample0_real = (temp0_real + temp1_real) >> 15;
+ 	assign sample0_imag = (temp0_imag + temp1_imag) >> 15;
+ 	assign sample1_real = (temp0_real - temp1_real) >> 15;
+ 	assign sample1_imag = (temp0_imag - temp1_imag) >> 15;
+ 	assign sample2_real = (temp2_real + temp3_real) >> 15;
+ 	assign sample2_imag = (temp2_imag + temp3_imag) >> 15;
+ 	assign sample3_real = (temp2_real - temp3_real) >> 15;
+ 	assign sample3_imag = (temp2_imag - temp3_imag) >> 15;
+ 	assign sample4_real = (temp4_real + temp5_real) >> 15;
+ 	assign sample4_imag = (temp4_imag + temp5_imag) >> 15;
+ 	assign sample5_real = (temp4_real - temp5_real) >> 15;
+ 	assign sample5_imag = (temp4_imag - temp5_imag) >> 15;
+ 	assign sample6_real = (temp6_real + temp7_real) >> 15;
+ 	assign sample6_imag = (temp6_imag + temp7_imag) >> 15;
+ 	assign sample7_real = (temp6_real - temp7_real) >> 15;
+ 	assign sample7_imag = (temp6_imag - temp7_imag) >> 15;
+ 	
+ 	assign SampleReal = {sample7_real, sample6_real, sample5_real, sample4_real, sample3_real, sample2_real, sample1_real, sample0_real};
+ 	assign SampleImag = {sample7_imag, sample6_imag, sample5_imag, sample4_imag, sample3_imag, sample2_imag, sample1_imag, sample0_imag};
+ }
+ 
+ //schedule for hardware share
+ schedule DIT_four_Butterfly {DIT_four_BUTTERFLY}
+ {
+ 	use SampleReal 1;
+ 	use SampleImag 1;
+ 	use WReal 1;
+ 	use WImag 1;
+ 	def temp0_real 1;
+ 	def temp0_imag 1;
+ 	def temp2_real 1;
+ 	def temp2_imag 1;
+ 	def temp4_real 1;
+ 	def temp4_imag 1;
+ 	def temp6_real 1;
+ 	def temp6_imag 1;
+ 	def temp1_real 1;
+ 	def temp1_imag 1;
+ 	def temp3_real 2;
+ 	def temp3_imag 2;
+ 	def sample0_real 2;
+ 	def sample0_imag 2;
+ 	def sample1_real 2;
+ 	def sample1_imag 2;
+ 	def temp5_real 3;
+ 	def temp5_imag 3;
+ 	def sample2_real 3;
+ 	def sample2_imag 3;
+ 	def sample3_real 3;
+ 	def sample3_imag 3;
+ 	def temp7_real 4;
+ 	def temp7_imag 4;
+ 	def sample4_real 4;
+ 	def sample4_imag 4;
+ 	def sample5_real 4;
+ 	def sample5_imag 4;
+ 	def sample6_real 5;
+ 	def sample6_imag 5;
+ 	def sample7_real 5;
+ 	def sample7_imag 5;
+ 	def SampleReal 6;
+ 	def SampleImag 6;	
+ }
+ 
+ 
+ //schedule for without hardware share 
+/*  schedule DIT_four_Butterfly {DIT_four_BUTTERFLY}
+ {
+ 	use SampleReal 1;
+ 	use SampleImag 1;
+ 	use WReal 1;
+ 	use WImag 1;
+ 	def temp0_real 1;
+ 	def temp0_imag 1;
+ 	def temp2_real 1;
+ 	def temp2_imag 1;
+ 	def temp4_real 1;
+ 	def temp4_imag 1;
+ 	def temp6_real 1;
+ 	def temp6_imag 1;
+ 	def temp1_real 1;
+ 	def temp1_imag 1;
+ 	def temp3_real 1;
+ 	def temp3_imag 1;
+ 	def sample0_real 2;
+ 	def sample0_imag 2;
+ 	def sample1_real 2;
+ 	def sample1_imag 2;
+ 	def temp5_real 2;
+ 	def temp5_imag 2;
+ 	def sample2_real 2;
+ 	def sample2_imag 2;
+ 	def sample3_real 2;
+ 	def sample3_imag 2;
+ 	def temp7_real 2;
+ 	def temp7_imag 2;
+ 	def sample4_real 3;
+ 	def sample4_imag 3;
+ 	def sample5_real 3;
+ 	def sample5_imag 3;
+ 	def sample6_real 3;
+ 	def sample6_imag 3;
+ 	def sample7_real 3;
+ 	def sample7_imag 3;
+ 	def SampleReal 4;
+ 	def SampleImag 4;	
+ }
+ */
+ 
+ //==================
+ //DIF_four_Butterfly
+ //==================
+  operation DIF_four_BUTTERFLY{inout fft_128 SampleReal, inout fft_128 SampleImag, in fft_64 WReal, in fft_64 WImag}{}
+  {
+ 	wire [15:0] sample0_real, sample1_real, sample2_real, sample3_real, sample4_real, sample5_real, sample6_real, sample7_real;
+ 	wire [15:0] sample0_imag, sample1_imag, sample2_imag, sample3_imag, sample4_imag, sample5_imag, sample6_imag, sample7_imag;
+  	wire [15:0]	temp0_real, temp1_real, temp2_real, temp3_real, temp4_real, temp5_real, temp6_real, temp7_real;
+  	wire [15:0] temp0_imag, temp1_imag, temp2_imag, temp3_imag, temp4_imag, temp5_imag, temp6_imag, temp7_imag;
+  	
+ 	assign temp0_real = SampleReal[15:0] + SampleReal[31:16];
+ 	assign temp1_real = SampleReal[15:0] - SampleReal[31:16]; 
+ 	assign temp2_real = SampleReal[47:32] + SampleReal[63:48];
+ 	assign temp3_real = SampleReal[47:32] - SampleReal[63:48]; 
+ 	assign temp4_real = SampleReal[79:64] + SampleReal[95:80];
+ 	assign temp5_real = SampleReal[79:64] - SampleReal[95:80]; 
+ 	assign temp6_real = SampleReal[111:96] + SampleReal[127:112];
+ 	assign temp7_real = SampleReal[111:96] - SampleReal[127:112]; 
+ 	
+ 	assign temp0_imag = SampleImag[15:0] + SampleImag[31:16];
+ 	assign temp1_imag = SampleImag[15:0] - SampleImag[31:16]; 
+ 	assign temp2_imag = SampleImag[47:32] + SampleImag[63:48];
+ 	assign temp3_imag = SampleImag[47:32] - SampleImag[63:48]; 
+ 	assign temp4_imag = SampleImag[79:64] + SampleImag[95:80];
+ 	assign temp5_imag = SampleImag[79:64] - SampleImag[95:80]; 
+ 	assign temp6_imag = SampleImag[111:96] + SampleImag[127:112];
+ 	assign temp7_imag = SampleImag[111:96] - SampleImag[127:112];
+ 	
+ 	assign sample0_real = temp0_real;
+ 	assign sample0_imag = temp0_imag;
+ 	assign sample2_real = temp2_real;
+ 	assign sample2_imag = temp2_imag;
+ 	assign sample4_real = temp4_real;
+ 	assign sample4_imag = temp4_imag;
+ 	assign sample6_real = temp6_real;
+ 	assign sample6_imag = temp6_imag;
+ 	
+ 	assign sample1_real = ComplexMul_Real(temp1_real, temp1_imag, WReal[15:0], WImag[15:0]) >> 15;
+ 	assign sample1_imag = ComplexMul_Imag(temp1_real, temp1_imag, WReal[15:0], WImag[15:0]) >> 15;
+ 	assign sample3_real = ComplexMul_Real(temp3_real, temp3_imag, WReal[31:16], WImag[31:16]) >> 15;
+ 	assign sample3_imag = ComplexMul_Imag(temp3_real, temp3_imag, WReal[31:16], WImag[31:16]) >> 15;
+ 	assign sample5_real = ComplexMul_Real(temp5_real, temp5_imag, WReal[47:32], WImag[47:32]) >> 15;
+ 	assign sample5_imag = ComplexMul_Imag(temp5_real, temp5_imag, WReal[47:32], WImag[47:32]) >> 15;
+ 	assign sample7_real = ComplexMul_Real(temp7_real, temp7_imag, WReal[63:48], WImag[63:48]) >> 15;
+ 	assign sample7_imag = ComplexMul_Imag(temp7_real, temp7_imag, WReal[63:48], WImag[63:48]) >> 15;
+
+ 	assign SampleReal = {sample7_real, sample6_real, sample5_real, sample4_real, sample3_real, sample2_real, sample1_real, sample0_real};
+ 	assign SampleImag = {sample7_imag, sample6_imag, sample5_imag, sample4_imag, sample3_imag, sample2_imag, sample1_imag, sample0_imag};
+  }
+ 
+ schedule DIF_four_Butterfly {DIF_four_BUTTERFLY}
+ {
+ 	use SampleReal 1;
+ 	use SampleImag 1;
+ 	use WReal 1;
+ 	use WImag 1;
+ 	def temp0_real 1;
+ 	def temp0_imag 1;
+ 	def temp1_real 1;
+ 	def temp1_imag 1;
+ 	def temp2_real 1;
+ 	def temp2_imag 1;
+ 	def temp3_real 1;
+ 	def temp3_imag 1;
+ 	def temp4_real 1;
+ 	def temp4_imag 1;
+ 	def temp5_real 1;
+ 	def temp5_imag 1;
+ 	def temp6_real 1;
+ 	def temp6_imag 1;
+ 	def temp7_real 1;
+ 	def temp7_imag 1;
+ 	
+ 	def sample0_real 2;
+ 	def sample0_imag 2;
+ 	def sample2_real 2;
+ 	def sample2_imag 2;
+ 	def sample4_real 2;
+ 	def sample4_imag 2;
+ 	def sample6_real 2;
+ 	def sample6_imag 2;
+ 	
+ 	def sample1_real 2;
+ 	def sample1_imag 2;
+ 	def sample3_real 3;
+ 	def sample3_imag 3;
+ 	def sample5_real 4;
+ 	def sample5_imag 4;
+ 	def sample7_real 5;
+ 	def sample7_imag 5;
+ 	def SampleReal 6;
+ 	def SampleImag 6;	
+ }
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
